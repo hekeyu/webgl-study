@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>HTML5 WebGL粒子爆炸动画DEMO演示</title>
+  <style>
+  	body{    
+  		margin:0px;
+  		overflow: hidden;
+  	}
+  	canvas{
+  		margin:0px;
+  		position:absolute;
+  	}
+  </style>
+  
+</head>
+
+<body>
+  
+<canvas id="c"></canvas>
+ 
+//片段着色器
+<script id="shader-fs" type="x-shader/x-fragment">
+				#ifdef GL_ES               
+				  precision highp float;
+				  #endif
+				uniform float u_Width;
+				uniform float u_Height;
+				uniform vec4 u_FragColor; 
+    		void main(void) {
+    		 gl_FragColor = vec4(gl_FragCoord.x/u_Width, 0.0, gl_FragCoord.y/u_Height, 1.0);  
+    		}
+		</script>
+//顶点着色器
+<script id="shader-vs" type="x-shader/x-vertex">
+	    
+    	attribute vec4 a_Position;
+      uniform mat4 u_ModelMatrix;
+   	void main(void) {
+  		   gl_Position = u_ModelMatrix * a_Position;
+  	}   
+  </script>
+  
+  <script src = "js\cuon-matrix.js"></script>
+    <script>
+
+
+var canvas, gl;
+ 
+  
+
+ 
+  canvas = document.getElementById("c");
+
+  gl = canvas.getContext("experimental-webgl");
+ 
+ 
+  cw = window.innerWidth;
+  ch = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = ch;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+
+  var vertexShaderScript = document.getElementById("shader-vs");
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderScript.text);
+  gl.compileShader(vertexShader);
+  
+
+  //    Load the fragment shader that's defined in a separate script
+  //    More info about fragment shaders: http://en.wikipedia.org/wiki/Fragment_shader
+  var fragmentShaderScript = document.getElementById("shader-fs");
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderScript.text);
+  gl.compileShader(fragmentShader);
+ 
+  //    Create a shader program.
+  gl.program = gl.createProgram();
+  gl.attachShader(gl.program, vertexShader);
+  gl.attachShader(gl.program, fragmentShader);
+  gl.linkProgram(gl.program);
+  gl.useProgram(gl.program); 
+  
+  var vertices = new Float32Array([
+  	0.0, 0.5, -0.5, -0.5, 0.5, -0.5
+  ]);
+  
+  var vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(a_Position);
+  
+
+  
+  var u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
+  var currentAngle = 0.0;
+  var modelMatrix = new Matrix4(); 
+
+  var tick = function(){
+    
+    var u_Width = gl.getUniformLocation(gl.program, 'u_Width');
+    var u_Height= gl.getUniformLocation(gl.program, 'u_Height');
+    gl.uniform1f(u_Width, gl.drawingBufferWidth);
+    gl.uniform1f(u_Height, gl.drawingBufferHeight);
+    
+  	currentAngle += 2.0;
+  	currentAngle %= 360;
+  	draw(gl, 3, currentAngle, modelMatrix, u_ModelMatrix);
+  	requestAnimationFrame(tick, canvas);
+  }
+  function draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix) {
+  // Set the rotation matrix
+
+  modelMatrix.setRotate(currentAngle, 0, 0, 1);
+  modelMatrix.translate(0.5, 0, 0);
+  gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+  
+   gl.clear(gl.COLOR_BUFFER_BIT);
+   gl.drawArrays(gl.TRIANGLES, 0, n);
+}
+  
+  
+  // Last time that this function was called
+
+
+   tick();
+    </script>
+
+</body>
+</html>

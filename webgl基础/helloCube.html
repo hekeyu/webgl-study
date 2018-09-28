@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>HTML5 WebGL粒子爆炸动画DEMO演示</title>
+  <style>
+  	body{    
+  		margin:0px;
+
+  	}
+  	canvas{
+  		
+  		margin:0px;
+  		position:absolute;
+  	}
+  </style>
+  
+</head>
+
+<body>
+  
+<canvas id="c"></canvas>
+ 
+//片段着色器
+<script id="shader-fs" type="x-shader/x-fragment">
+				#ifdef GL_ES               
+				  precision highp float;
+				  #endif
+			varying vec4 v_Color;
+    		void main(void) {
+    		 gl_FragColor = v_Color;
+    		}
+		</script>
+//顶点着色器
+<script id="shader-vs" type="x-shader/x-vertex">
+	    
+    	attribute vec4 a_Position;
+    	attribute vec4 a_Color;
+    	uniform mat4 u_MvpMatrix;
+    	varying vec4 v_Color;
+    
+   	void main(void) {
+  		   gl_Position = u_MvpMatrix * a_Position;
+           v_Color = a_Color;
+  	}   
+  </script>
+  
+  <script src = "js\cuon-matrix.js"></script> 
+  
+  
+    <script>
+
+
+var canvas, gl;
+
+  canvas = document.getElementById("c");
+  gl = canvas.getContext("experimental-webgl");
+ 
+ 
+  cw = 600;
+  ch = 600;  
+  canvas.width = cw;
+  canvas.height = ch;
+  gl.viewport(0, 0, cw, ch);  
+
+  var vertexShaderScript = document.getElementById("shader-vs");
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderScript.text);
+  gl.compileShader(vertexShader);
+  
+  var fragmentShaderScript = document.getElementById("shader-fs");
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderScript.text);
+  gl.compileShader(fragmentShader);
+ 
+  gl.program = gl.createProgram();
+  gl.attachShader(gl.program, vertexShader);
+  gl.attachShader(gl.program, fragmentShader);
+  gl.linkProgram(gl.program);
+  gl.useProgram(gl.program); 
+  
+  var verticesColors = new Float32Array([
+  	 1.0,  1.0,  1.0,     1.0,  1.0,  1.0,  // v0 White
+    -1.0,  1.0,  1.0,     1.0,  0.0,  1.0,  // v1 Magenta
+    -1.0, -1.0,  1.0,     1.0,  0.0,  0.0,  // v2 Red
+     1.0, -1.0,  1.0,     1.0,  1.0,  0.0,  // v3 Yellow
+     1.0, -1.0, -1.0,     0.0,  1.0,  0.0,  // v4 Green
+     1.0,  1.0, -1.0,     0.0,  1.0,  1.0,  // v5 Cyan
+    -1.0,  1.0, -1.0,     0.0,  0.0,  1.0,  // v6 Blue
+    -1.0, -1.0, -1.0,     0.0,  0.0,  0.0   // v7 Black
+  ]);
+  
+  var indices = new Uint8Array([
+  	 0, 1, 2,   0, 2, 3,    // front
+     0, 3, 4,   0, 4, 5,    // right
+     0, 5, 6,   0, 6, 1,    // up
+     1, 6, 7,   1, 7, 2,    // left
+     7, 4, 3,   7, 3, 2,    // down
+     4, 7, 6,   4, 6, 5     // back
+  	
+  ]);
+  
+  var vertexColorBuffer = gl.createBuffer();
+  var indexBuffer = gl.createBuffer();
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, verticesColors, gl.STATIC_DRAW);
+  
+  var FSIZE = verticesColors.BYTES_PER_ELEMENT;
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  
+  gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
+  gl.enableVertexAttribArray(a_Position);
+  
+  var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+  gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
+  gl.enableVertexAttribArray(a_Color);
+  
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  
+ 
+ 
+  //背面消隐
+  gl.enable(gl.DEPTH_TEST);
+  
+  var u_MvpMatrix = gl.getUniformLocation(gl.program, "u_MvpMatrix");
+ 
+ 
+      var mvpMatrix = new Matrix4();
+//    mvpMatrix.setPerspective(40, 1, 1, 20); 
+//    mvpMatrix.lookAt(-3, 5, 5, 0, 0, 0, 0, 1, 0);
+    
+    
+    var look = LookAt(-3, 5, 5, 0, 0, 0, 0, 1, 0);  
+    var pers = SetPerspective(40, 1, 2,10);
+    var dog = multiply(look, pers);
+  dog = multiply(dog, rotateX(100));
+ 
+  gl.uniformMatrix4fv(u_MvpMatrix, false,new Float32Array(dog));
+   // gl.uniformMatrix4fv(u_MvpMatrix, false,new Float32Array(pers));
+  
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_BYTE, 0); 
+  
+  var angle = 10;
+  function animal(){
+  	//angle = angle + 1;
+  	 look = multiply(look, rotateX(angle));
+     var pers = SetPerspective(40, 1, 2,10);
+     var dog = multiply(look, pers);
+     
+     
+  gl.uniformMatrix4fv(u_MvpMatrix, false,new Float32Array(dog));
+  
+  
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_BYTE, 0); 
+  requestAnimationFrame(animal)
+  }
+  animal();
+ 
+ 
+ 
+ 
+ 
+ 
+function rotateX(angle){
+	cos = Math.cos(Math.PI / 360 * angle);
+	sin = Math.sin(Math.PI / 360 * angle);
+	var mat = [
+	           cos, sin,0,0,
+             -sin,cos,0,0,
+               0,0,1,0,
+             0,0,0,1
+	           ];
+	    return mat;
+}
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ function LookAt(e1, e2, e3, c1, c2, c3, u1, u2, u3){ 
+  var mvpMatrix = [
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0
+        ];  
+     
+     
+      z1 = e1 - c1; z2 = e2 - c2, z3 = e3 - c3;
+       
+      //转化为单位向量
+      lengthZ = 1 / Math.sqrt(z1*z1 + z2*z2 + z2*z2);
+      z1 *= lengthZ;
+      z2 *= lengthZ;
+      z3 *= lengthZ;  
+       
+      //向量z与向量up求内积进而求出向量x
+      x1 = u2 * z3 - u3 * z2;   
+      x2 = u3 * z1 - u1 * z3;
+      x3 = u1 * z2 - u2 * z1;
+        
+      lengthX = 1 / Math.sqrt(x1 * x1 + x2 * x2 + x3 * x3);
+      x1 *= lengthX;
+      x2 *= lengthX;
+      x3 *= lengthX;  
+      
+      y1 = z2 * x3 - z3 * x2;
+      y2 = z3 * x1 - z1 * x3;
+      y3 = z1 * x2 - z2 * x1;
+      lengthY = 1 / Math.sqrt(y1 * y1 + y2 * y2 + y3 * y3);
+      y1 *= lengthY;
+      y2 *= lengthY;
+      y3 *= lengthY;
+        
+      mvpMatrix[0] = x1;  mvpMatrix[1]  = y1; mvpMatrix[2]  = z1; mvpMatrix[3] = 0;
+      mvpMatrix[4] = x2;  mvpMatrix[5]  = y2; mvpMatrix[6]  = z2; mvpMatrix[7] = 0;
+      mvpMatrix[8] = x3;  mvpMatrix[9]  = y3; mvpMatrix[10] = z3; mvpMatrix[11] = 0;
+      mvpMatrix[12] = -(e1 * x1 + e2 * x2 + e3 * x3); 
+      mvpMatrix[13] = -(e1 * y1 + e2 * y2 + e3 * y3); 
+      mvpMatrix[14] = -(e1 * z1 + e2 * z2 + e3 * z3);
+      mvpMatrix[15] = 1;
+  
+      return mvpMatrix;
+    }   
+  
+  
+  
+function multiply(mat1, mat2){
+	 var ans = new Array(16);
+	 ans[0] = mat1[0] * mat2[0] + mat1[1]*mat2[4] + mat1[2] * mat2[8]  + mat1[3] * mat2[12];
+	 ans[1] = mat1[0] * mat2[1] + mat1[1]*mat2[5] + mat1[2] * mat2[9]  + mat1[3] * mat2[13];
+	 ans[2] = mat1[0] * mat2[2] + mat1[1]*mat2[6] + mat1[2] * mat2[10] + mat1[3] * mat2[14];
+	 ans[3] = mat1[0] * mat2[3] + mat1[1]*mat2[7] + mat1[2] * mat2[11] + mat1[3] * mat2[15];
+	 
+	 ans[4] = mat1[4] * mat2[0] + mat1[5]*mat2[4] + mat1[6] * mat2[8]  + mat1[7] * mat2[12];
+	 ans[5] = mat1[4] * mat2[1] + mat1[5]*mat2[5] + mat1[6] * mat2[9]  + mat1[7] * mat2[13];
+	 ans[6] = mat1[4] * mat2[2] + mat1[5]*mat2[6] + mat1[6] * mat2[10] + mat1[7] * mat2[14];
+	 ans[7] = mat1[4] * mat2[3] + mat1[5]*mat2[7] + mat1[6] * mat2[11] + mat1[7] * mat2[15];
+	
+	 ans[8] = mat1[8] * mat2[0] + mat1[9]*mat2[4] + mat1[10] * mat2[8]  + mat1[7] * mat2[12];
+	 ans[9] = mat1[8] * mat2[1] + mat1[9]*mat2[5] + mat1[10] * mat2[9]  + mat1[7] * mat2[13];
+	ans[10] = mat1[8] * mat2[2] + mat1[9]*mat2[6] + mat1[10] * mat2[10] + mat1[7] * mat2[14];
+	ans[11] = mat1[8] * mat2[3] + mat1[9]*mat2[7] + mat1[10] * mat2[11] + mat1[7] * mat2[15];
+	
+	ans[12] = mat1[12] * mat2[0] + mat1[13]*mat2[4] + mat1[14] * mat2[8]  + mat1[15] * mat2[12];
+	ans[13] = mat1[12] * mat2[1] + mat1[13]*mat2[5] + mat1[14] * mat2[9]  + mat1[15] * mat2[13];
+	ans[14] = mat1[12] * mat2[2] + mat1[13]*mat2[6] + mat1[14] * mat2[10] + mat1[15] * mat2[14];
+	ans[15] = mat1[12] * mat2[3] + mat1[13]*mat2[7] + mat1[14] * mat2[11] + mat1[15] * mat2[15];
+	return ans;
+}
+       
+       
+       
+       
+    
+//设置perspective
+function SetPerspective(fovy, aspect, near, far){
+  var mvpMatrix = [
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0,
+            0,0,0,0
+        ];
+ 
+  var cot = 1 / Math.tan(Math.PI / 360 * fovy);
+  var n = near;
+  var f = far;
+  mvpMatrix[0] = cot/aspect;   
+  mvpMatrix[5] = cot;
+  mvpMatrix[10]= -(f + n)/(f - n);
+  mvpMatrix[11]= -1;
+  mvpMatrix[14]=-f * n * 2/(f - n);
+  return mvpMatrix;
+ }
+ 
+    </script>
+ 
+</body>
+</html>

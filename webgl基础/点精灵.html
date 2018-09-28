@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>HTML5 WebGL粒子爆炸动画DEMO演示</title>
+  <style>
+  	body{    
+  		margin:0px;
+  		overflow: hidden;
+  	}
+  	canvas{
+  		
+  		margin:0px;
+  		position:absolute;
+  	} 
+  </style>
+  
+</head>
+
+<body>
+  
+<canvas id="c"></canvas>
+ 
+//片段着色器
+<script id="shader-fs" type="x-shader/x-fragment">
+				#ifdef GL_ES               
+				  precision highp float;
+				  #endif
+				uniform sampler2D u_Sampler;
+		  
+    		void main(void) {
+    		//	vec2 p = vec2(1.0, 2.0);
+    		//	float radius = 0.2;
+    		//	vec3 base = texture2D(u_Sampler, p).xyz;
+    		//	vec3 splat = exp(-dot(p, p) / radius);
+				//	gl_FragColor = vec4(base , 1.0);
+    		 vec4 oo = texture2D(u_Sampler,  gl_PointCoord + vec2(0, 0)) * vec4(0.0, 1.0, 1.0,1.0);  
+    	   gl_FragColor = oo;
+    		} 
+		</script>
+//顶点着色器
+<script id="shader-vs" type="x-shader/x-vertex">
+	    
+    	attribute vec4 a_Position;
+    	attribute vec2 a_TexCoord;
+      uniform mat4 u_MvpMatrix;
+   	void main(void) {
+  		   gl_Position = u_MvpMatrix * a_Position;
+ 
+  		  //gl_PointSize = 100.0;
+  		 
+  		  float b =20.0 / float(gl_Position.z) * 20.0;
+  		  gl_PointSize = b;      
+ 
+  	}   
+  </script>
+  <script src = "js/hekeyuMatrix.js"></script>
+  <script src = "js\cuon-matrix.js"></script>
+    <script>
+ 
+
+var canvas, gl;
+
+  canvas = document.getElementById("c");
+  gl = canvas.getContext("experimental-webgl");
+ 
+ 
+  cw = window.innerWidth;
+  ch = window.innerHeight;
+  canvas.width = cw;
+  canvas.height = ch;
+  gl.viewport(0, 0, cw, ch);
+
+  var vertexShaderScript = document.getElementById("shader-vs");
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderScript.text);
+  gl.compileShader(vertexShader);
+ 
+  
+
+  //    Load the fragment shader that's defined in a separate script
+  //    More info about fragment shaders: http://en.wikipedia.org/wiki/Fragment_shader
+  var fragmentShaderScript = document.getElementById("shader-fs");
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderScript.text);
+  gl.compileShader(fragmentShader);
+ 
+
+  gl.program = gl.createProgram();
+  gl.attachShader(gl.program, vertexShader);
+  gl.attachShader(gl.program, fragmentShader);
+  gl.linkProgram(gl.program);
+  gl.useProgram(gl.program); 
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.DST_ALPHA, gl.SRC_ALPHA);
+   
+  var vertices = new Float32Array([
+  	0.0, 0.0, 0.0,
+  	5.0, 0.0, 0.0,             0.0, 5.0, 0.0,
+  	0.0, 0.0, 5.0 
+  ]); 
+   
+  var vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  
+  var a_Position=gl.getAttribLocation(gl.program,'a_Position');
+  var FSIZE = vertices.BYTES_PER_ELEMENT;
+  gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 3, 0);
+  gl.enableVertexAttribArray(a_Position);
+    
+     
+   var u_MvpMatrix = gl.getUniformLocation(gl.program, 'u_MvpMatrix');
+    
+/* 
+  var viewProjMatrix = new Matrix4();
+  viewProjMatrix.setPerspective(90.0, canvas.width / canvas.height, 1, 100.0);
+  viewProjMatrix.lookAt(0, 0, 10, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  
+  gl.uniformMatrix4fv(u_MvpMatrix, false, viewProjMatrix.elements);
+*/   
+ //////////// 
+  
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            loadImg(gl);
+            
+  
+  
+  var look = LookAt(0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  var pers = SetPerspective(100.0, canvas.width/canvas.height, 1, 100.0);
+  var last = multiply(look, pers); 
+  
+  var r= rotateAxis(1, 1, 0, 700); 
+  
+   
+   r = multiply(r, rotateAxis(1, 1, 1, 860));
+  
+  
+  last = multiply(r, last);
+  
+  gl.uniformMatrix4fv(u_MvpMatrix, false, last);
+  
+  
+  
+  
+  var currentAngle = [1.0, 0.0, 0.0, 0.0];  
+  initEventHandlers(canvas, currentAngle);
+  
+  
+   
+  function tick() {  
+  	if(!view){
+  	  var look = LookAt(0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+ 	 		var pers = SetPerspective(100.0, canvas.width/canvas.height, 1, 300.0);
+  		var view = multiply(look, pers);
+  		var fuck = [1, 0, 0, 0, 
+  								0, 1, 0, 0,
+  								0, 0, 1, 0, 
+  								0, 0, 0, 1];
+  	}
+    
+    
+     var theta = Math.abs(currentAngle[0] * currentAngle[0] + currentAngle[1] * currentAngle[1]) / 10;
+
+  //   fuck = multiply(fuck, rotateAxis(-currentAngle[0], -currentAngle[1], 0, theta));
+       fuck = multiply(multiply(rotateX(-currentAngle[0]), rotateY(-currentAngle[1])), fuck);
+    fuck = rotateAxis(-currentAngle[0], -currentAngle[1], 0, theta);
+	   gl.uniformMatrix4fv(u_MvpMatrix, false, multiply(fuck, view));
+  		
+  		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);     // Clear buffers
+  		gl.drawArrays(gl.POINTS, 0, 4); 
+     	requestAnimationFrame(tick, canvas); 
+  };  
+  tick();     
+   
+
+    
+   
+          
+  
+   function loadImg(gl){
+
+            var image=new Image();
+            image.onload=function(){ drawPic(gl,image) }
+            image.src="img/sky.JPG";
+       } 
+        function drawPic(gl,image) {
+
+            var width = image.width;
+
+            var height = image.height;
+
+            var pointSize = gl.getUniformLocation(gl.program, "u_PointSize");
+            gl.uniform1f(pointSize, Math.max(width, height));
+            var texture = gl.createTexture();
+            //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,1);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.uniform1i(gl.getUniformLocation(gl.program, "u_Sampler"), 0);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, generateSprite());
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.POINTS, 0, 4);  
+            
+        }      
+
+function generateSprite() {
+//生成精灵贴图
+            var canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+
+            var context = canvas.getContext('2d');
+            var gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(0,255,255,1)');
+            gradient.addColorStop(0.4, 'rgba(0,0,64,1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,1)');
+
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            return canvas;
+        }
+
+function initEventHandlers(canvas, currentAngle) {
+  var dragging = false;         // Dragging or not
+  var lastX = -1, lastY = -1;   // Last position of the mouse
+
+  canvas.onmousedown = function(ev) {   // Mouse is pressed
+    var x = ev.clientX, y = ev.clientY;
+    var rect = ev.target.getBoundingClientRect();
+    if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
+      lastX = x; lastY = y;
+      dragging = true;
+    }
+  };
+
+  canvas.onmouseup = function(ev) { dragging = false;  }; // Mouse is released
+
+  canvas.onmousemove = function(ev) { // Mouse is moved
+    var x = ev.clientX, y = ev.clientY;
+    if (dragging) {
+      var factor = 100/canvas.height; // The rotation ratio
+      var dx = factor * (x - lastX);
+      var dy = factor * (y - lastY);
+      // Limit x-axis rotation angle to -90 to 90 degrees
+     // currentAngle[0] = Math.max(Math.min(currentAngle[0] + dy, 90.0), -90.0);
+     currentAngle[0] = (currentAngle[0] + dy);
+     currentAngle[1] = (currentAngle[1] + dx);
+    } 
+    lastX = x, lastY = y;
+  };
+}
+
+    </script>
+
+
+
+</body>
+</html>

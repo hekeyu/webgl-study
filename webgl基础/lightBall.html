@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>HTML5 WebGL粒子爆炸动画DEMO演示</title>
+  <style>
+  	body{      
+  		margin:0px; 
+  		overflow: hidden;
+  	}
+  	canvas{ 
+  		margin:0px;
+  		position:absolute; 
+  	}
+  </style>
+  
+</head>
+
+<body>
+  
+<canvas id="c"></canvas>
+ 
+//片段着色器
+<script id="shader-fs" type="x-shader/x-fragment">
+				#ifdef GL_ES               
+				  precision mediump float;
+				  #endif
+			  varying vec4 v_Color;
+    		void main(void) {
+    		 gl_FragColor = v_Color;
+    		}
+	</script> 
+//顶点着色器
+<script id="shader-vs" type="x-shader/x-vertex">
+    	attribute vec4 a_Position;
+    	attribute vec4 a_Color;
+    	attribute vec4 a_Normal;
+ 
+    	uniform mat4 u_MvpMatrix;
+    	uniform vec3 u_LightColor;
+    	uniform vec3 u_LightDirection;
+    	uniform mat4 invMatrix;
+      varying vec4 v_Color;
+        
+   	void main(void) {  
+
+//vec3  invLight = normalize(invMatrix * vec4(lightDirection, 0.0)).xyz;
+	
+	//float diffuse  = clamp(dot(normal, invLight), 0.1, 1.0);
+	
+//	float specular  = pow(diffuse, 50.0);
+ // vec4  destColor = vColor * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0) + ambientColor;
+	//vColor         = color * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0);
+	//gl_Position    = mvpMatrix * vec4(position, 1.0);
+
+
+
+         vec3  invLight = normalize(invMatrix * vec4(u_LightDirection, 0.0)).xyz;
+				 gl_Position = u_MvpMatrix * a_Position;
+         vec3 normal = normalize(a_Normal.xyz);
+         float diffuse = clamp(dot(invLight, normal), 0.1, 1.0);
+         float specular  = pow(diffuse, 100.0);
+         
+         v_Color = a_Color * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0);
+  
+  	}   
+  </script>
+  
+  <script src = "js/hekeyuMatrix.js"></script>
+  <script src = "js\cuon-matrix.js"></script>
+<script>
+
+var canvas, gl;
+ 
+  
+
+ 
+  canvas = document.getElementById("c");
+
+  gl = canvas.getContext("experimental-webgl");
+ 
+ 
+  cw = 600;
+  ch = 600;
+  canvas.width = cw;
+  canvas.height = ch;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+
+  var vertexShaderScript = document.getElementById("shader-vs");
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderScript.text);
+  gl.compileShader(vertexShader);
+  
+
+  //    Load the fragment shader that's defined in a separate script
+  //    More info about fragment shaders: http://en.wikipedia.org/wiki/Fragment_shader
+  var fragmentShaderScript = document.getElementById("shader-fs");
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderScript.text);
+  gl.compileShader(fragmentShader);
+ 
+  //    Create a shader program.
+  gl.program = gl.createProgram();
+  gl.attachShader(gl.program, vertexShader);
+  gl.attachShader(gl.program, fragmentShader);
+  gl.linkProgram(gl.program);
+  gl.useProgram(gl.program); 
+   
+  var d = 60;
+  var h = 60;
+  var r = 1;
+  var points = [];
+  var indexes = [];
+  var colors = [];
+  var perD = Math.PI * 2 / d;
+  var perH = Math.PI / h;
+  for(var i = 0; i <d; i++){
+
+   
+  	points.push(0.0, 0.0, r); 
+  	var color = hsva(0, 0, 1, 1);
+  	colors.push(color[0], color[1], color[2]);
+  	for(var j = 1; j <= h; j++){	
+  		 points.push(r * Math.cos(i * perD) * Math.sin(j * perH),
+  		             r * Math.sin(i * perD) * Math.sin(j * perH),
+  		             r * Math.cos(j * perH)); 
+  		 var color = hsva(360 / d * i, 1, 1, 1);
+  		 colors.push(color[0], color[1], color[2]);
+  		 indexes.push(i * (h+1) + j,   ((i + 1) * (h+1) + j - 1) % (d * (h+1)),   i * (h+1) + j - 1);
+  		 indexes.push(i * (h+1) + j,   ((i + 1) * (h+1) + j)%(d * (h+1)),    ((i + 1) * (h+1) + j - 1)%(d * (h+1)));
+       
+  	}  
+  	
+  } 
+  
+  
+  vertices = new Float32Array(points);
+  
+  indices = new Uint16Array(indexes); 
+  
+  colors = new Float32Array(colors);
+  var normals = new Float32Array(points); 
+  
+  
+   
+  initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT);
+  initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT);
+  initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT);
+     
+//绑定目录
+  var buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices, gl.STATIC_DRAW);   
+//设置视角以及视点  
+  var u_MvpMatrix = gl.getUniformLocation(gl.program, 'u_MvpMatrix');
+  var u_LightColor = gl.getUniformLocation(gl.program, 'u_LightColor');
+  var u_LightDirection = gl.getUniformLocation(gl.program, 'u_LightDirection');
+  var invMatrix = gl.getUniformLocation(gl.program, "invMatrix");
+  // Set the light color (white)
+  gl.uniform3f(u_LightColor, 1, 1.0, 1.0);
+  // Set the light direction (in the world coordinate)
+  
+	  var lightDirection = new Vector3([1.0, 4.0, 5.0]);
+	  lightDirection.normalize();     // Normalize
+	  gl.uniform3fv(u_LightDirection, lightDirection.elements);
+ 
+    var inver = [  1, 0, 0, 0,
+                   0, 1, 0, 0, 
+                   0, 0, 1, 0,
+                   0, 0, 0, 1
+                ]
+    gl.uniformMatrix4fv(invMatrix, false, inver); 
+ 
+
+
+  var look = LookAt(0, 0, 10, 0, 0, 0, 0, 1, 0); 
+  var pers = SetPerspective(40, canvas.width / canvas.height, 2, 10);
+  var temp = multiply(look, pers);
+  var last = new Float32Array(temp);
+
+ 
+   gl.uniformMatrix4fv(u_MvpMatrix, false, last)
+   gl.clearColor(1, 1, 1, 1); 
+   gl.enable(gl.DEPTH_TEST); 
+   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    
+    
+    var rotate = multiply(rotateX(40), rotateZ(60));
+  	var _last = new Float32Array(multiply(rotate, temp));
+  	gl.uniformMatrix4fv(u_MvpMatrix, false, _last);
+   
+    inver = inverse(rotate); 
+    gl.uniformMatrix4fv(invMatrix, false, inver);
+    
+   
+    gl.drawElements(gl.TRIANGLES, indexes.length, gl.UNSIGNED_SHORT, 0);
+   
+    var a = 0;
+    function circulation(){
+    	 a += 4;
+    	 a %= 360;
+    	 rotate = multiply(rotateX(a), rotateY(a));
+    	 _last = new Float32Array(multiply(rotate, temp));
+    	 gl.uniformMatrix4fv(u_MvpMatrix, false, _last);
+    	 
+    	 inver = inverse(rotate);
+    	 gl.uniformMatrix4fv(invMatrix, false, inver); 
+    	 gl.drawElements(gl.TRIANGLES, indexes.length, gl.UNSIGNED_SHORT, 0);
+    	 requestAnimationFrame(circulation);
+    	 
+    }
+   //circulation();
+   
+   
+   
+   
+   
+   
+   
+   var currentAngle = [1.0, 0.0];  
+   initEventHandlers(canvas, currentAngle);
+    
+  function tick() {  
+  	
+   //  var rotate = multiply(rotateX(currentAngle[0]), rotateY(-currentAngle[1]));
+     var theta = Math.abs(currentAngle[0] * currentAngle[0] + currentAngle[1] * currentAngle[1]) / 20;
+     var rotate = rotateAxis(-currentAngle[0], -currentAngle[1], 0, theta);
+     inver = inverse(rotate); 
+     gl.uniformMatrix4fv(invMatrix, false, inver);
+     
+      
+     
+  	  var _last = new Float32Array(multiply(rotate, temp));
+  		gl.uniformMatrix4fv(u_MvpMatrix, false, _last);
+  		
+  		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);     // Clear buffers
+  		gl.drawElements(gl.TRIANGLES, indexes.length, gl.UNSIGNED_SHORT, 0);   // Draw the cube
+      requestAnimationFrame(tick, canvas);
+  };
+  tick();  
+    
+    
+    
+function initArrayBuffer (gl, attribute, data, num, type) {
+   var buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  
+  var a_attribute = gl.getAttribLocation(gl.program, attribute);
+
+  gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
+  gl.enableVertexAttribArray(a_attribute);
+ // gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+  return true;
+}
+
+function hsva(h, s, v, a){
+		if(s > 1 || v > 1 || a > 1){return;}
+		var th = h % 360;
+		var i = Math.floor(th / 60);
+		var f = th / 60 - i;
+		var m = v * (1 - s);
+		var n = v * (1 - s * f);
+		var k = v * (1 - s * (1 - f));
+		var color = new Array();
+		if(!s > 0 && !s < 0){
+			color.push(v, v, v, a); 
+		} else {
+			var r = new Array(v, n, m, m, k, v);
+			var g = new Array(k, v, v, n, m, m);
+			var b = new Array(m, m, k, v, v, n);
+			color.push(r[i], g[i], b[i], a);
+		}
+		return color;
+}
+
+function initEventHandlers(canvas, currentAngle) {
+  var dragging = false;         // Dragging or not
+  var lastX = -1, lastY = -1;   // Last position of the mouse
+
+  canvas.onmousedown = function(ev) {   // Mouse is pressed
+    var x = ev.clientX, y = ev.clientY;
+    var rect = ev.target.getBoundingClientRect();
+    if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
+      lastX = x; lastY = y;
+      dragging = true;
+    }
+  };
+
+  canvas.onmouseup = function(ev) { dragging = false;  }; // Mouse is released
+
+  canvas.onmousemove = function(ev) { // Mouse is moved
+    var x = ev.clientX, y = ev.clientY;
+    if (dragging) {
+      var factor = 100/canvas.height; // The rotation ratio
+      var dx = factor * (x - lastX);
+      var dy = factor * (y - lastY);
+      // Limit x-axis rotation angle to -90 to 90 degrees
+     // currentAngle[0] = Math.max(Math.min(currentAngle[0] + dy, 90.0), -90.0);
+     currentAngle[0] = (currentAngle[0] + dy)%360;
+     currentAngle[1] = (currentAngle[1] + dx)%360;
+    }
+    lastX = x, lastY = y;
+  };
+}
+
+  </script>  
+
+</body>
+</html>

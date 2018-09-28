@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>HTML5 WebGL粒子爆炸动画DEMO演示</title>
+  <style>
+  	body{    
+  		margin:0px;
+  		overflow: hidden;
+  	}
+  	canvas{
+  		
+  		margin:0px;
+  		position:absolute;
+  	}
+  </style>
+  
+</head>
+
+<body>
+  
+<canvas id="c"></canvas>
+/* 
+  "uniform sampler2D u_Sampler;"+
+                "uniform float u_Angle"+
+         "void main() {"+
+             "    float x=gl_PointCoord.x-0.5;"+//将顶点坐标进行偏移，使得旋转中心点位于（0.5，0.5）
+             "    float y=gl_PointCoord.y-0.5;"+//将顶点坐标进行偏移，是的旋转中心点位于（0.5，0.5）
+           " float nx=(cos(u_Angle) * x - sin(u_Angle ) * y);"+//对x的旋转后的值
+             " float ny = (sin( u_Angle ) * x + cos( u_Angle ) * y);"+//对y的旋转后的值
+           " gl_FragColor = texture2D( u_Sampler, vec2( nx+0.5,ny+0.5) );"+ //获取图片颜色
+           "}"
+ 
+ */
+ 
+//片段着色器
+<script id="shader-fs" type="x-shader/x-fragment">
+				#ifdef GL_ES               
+				  precision highp float;
+				  #endif
+				uniform sampler2D u_Sampler;
+				varying vec2 v_TexCoord;
+    		void main(void) {
+    		 gl_FragColor = texture2D(u_Sampler, vec2(0.7, 0.5));  
+    		}
+		</script>
+//顶点着色器
+<script id="shader-vs" type="x-shader/x-vertex">
+	    
+    	attribute vec4 a_Position;
+    	attribute vec2 a_TexCoord;
+    	varying vec2 v_TexCoord;
+   	void main(void) {
+  		   gl_Position = a_Position;
+  		   v_TexCoord = a_TexCoord;
+  		   gl_PointSize = 100.0;
+ 
+  	}   
+  </script>
+  
+  <script src = "js\cuon-matrix.js"></script>
+    <script>
+
+
+var canvas, gl;
+
+  canvas = document.getElementById("c");
+  gl = canvas.getContext("experimental-webgl");
+ 
+ 
+  cw = window.innerWidth;
+  ch = window.innerHeight;
+  canvas.width = cw;
+  canvas.height = ch;
+  gl.viewport(0, 0, cw, ch);
+
+  var vertexShaderScript = document.getElementById("shader-vs");
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vertexShaderScript.text);
+  gl.compileShader(vertexShader);
+  
+
+  //    Load the fragment shader that's defined in a separate script
+  //    More info about fragment shaders: http://en.wikipedia.org/wiki/Fragment_shader
+  var fragmentShaderScript = document.getElementById("shader-fs");
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderScript.text);
+  gl.compileShader(fragmentShader);
+ 
+
+  gl.program = gl.createProgram();
+  gl.attachShader(gl.program, vertexShader);
+  gl.attachShader(gl.program, fragmentShader);
+  gl.linkProgram(gl.program);
+  gl.useProgram(gl.program); 
+  
+  var vertices = new Float32Array([
+  	-0.5,  0.5, 0.0, 1.0,
+  	-0.5, -0.5, 0.0, 0.0, 
+  	 0.5,  0.5, 1.0, 1.0, 
+  	 0.5, -0.5, 1.0, 0.0
+  ]);
+  
+  var n = 4;
+  
+  var vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  
+  
+  var FSIZE = vertices.BYTES_PER_ELEMENT;    //pdf 106
+  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE * 4, 0);  //最后一个参数为偏移量，这个是原图
+  gl.enableVertexAttribArray(a_Position);
+  
+  
+  var a_TexCoord = gl.getAttribLocation(gl.program, "a_TexCoord");
+  gl.vertexAttribPointer(a_TexCoord, 2, gl.FLOAT, false, FSIZE * 4, FSIZE * 2);
+  gl.enableVertexAttribArray(a_TexCoord);
+
+  var texture = gl.createTexture();
+  var u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
+  var image = new Image();
+  image.src = "img/sky.JPG";  
+  
+  
+  image.onload = function(){
+  	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image's y axis
+  
+   gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.uniform1i(gl.getUniformLocation(gl.program, "u_Sampler"), 0);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.POINTS, 0, 1);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+  
+  
+  
+  }
+  
+    </script>
+
+</body>
+</html>
